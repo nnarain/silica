@@ -1,3 +1,6 @@
+extern crate silica;
+
 fn main() {
-    println!("Hello, world!");
+    let options = silica::options::get_program_options();
+    println!("{:?}", options);
 }
