@@ -2,6 +2,8 @@
 extern crate serde_derive;
 extern crate docopt;
 
+extern crate nom;
+
 use std::fs::File;
 use std::io::prelude::*;
 use std::error::Error;

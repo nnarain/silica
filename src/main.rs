@@ -11,5 +11,6 @@ fn main() {
         }
     );
 
-    
+    let tokens = silica::lexer::tokenize(&input_data[..]).unwrap();
+    println!("{:?}", tokens);
 }
