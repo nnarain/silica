@@ -6,6 +6,8 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::error::Error;
 
+pub mod lexer;
+
 /// Command line arguments
 pub mod options {
     use docopt::Docopt;
@@ -33,6 +35,7 @@ pub mod options {
     }
 }
 
+/// Load bytes from file into memory
 pub fn load_file(rom_file: &String) -> Result<Vec<u8>, Box<Error>> {
     let mut file = File::open(rom_file)?;
 
