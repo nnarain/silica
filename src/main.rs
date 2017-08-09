@@ -11,6 +11,5 @@ fn main() {
         }
     );
 
-    let tokens = silica::lexer::tokenize(&input_data[..]).unwrap();
-    println!("{:?}", tokens);
+    silica::assembler::assemble(input_data);
 }

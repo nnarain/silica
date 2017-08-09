@@ -8,7 +8,7 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::error::Error;
 
-pub mod lexer;
+pub mod assembler;
 
 /// Command line arguments
 pub mod options {
