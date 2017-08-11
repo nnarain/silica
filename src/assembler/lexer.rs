@@ -110,6 +110,36 @@ named!(lex_directives<&[u8], Token>,
     )
 );
 
+// Parse Instructions
+named!(lex_instructions<&[u8], Token>, 
+    do_parse!(
+        instr: map_res!(map_res!(alt_complete!(
+            tag!("CLS")  |
+            tag!("RET")  |
+            tag!("SYS")  |
+            tag!("JP")   |
+            tag!("JR")   |
+            tag!("CALL") |
+            tag!("SE")   |
+            tag!("SNE")  |
+            tag!("LD")   |
+            tag!("ADD")  |
+            tag!("SUBN") |
+            tag!("SUB")  |
+            tag!("OR")   |
+            tag!("AND")  |
+            tag!("XOR")  |
+            tag!("SHR")  |
+            tag!("SHL")  |
+            tag!("RND")  |
+            tag!("DRW")  |
+            tag!("SKP")  |
+            tag!("SKNP")
+        ), from_utf8), FromStr::from_str) >>
+        (Token::Instruction(instr))
+    )
+);
+
 /// Convert input bytes into tokens
 pub fn tokenize(input: &[u8]) -> Result<Vec<Token>, TokenError> {
     let tokens: Vec<Token> = Vec::new();
@@ -187,7 +217,7 @@ mod tests {
 
     #[test]
     fn test_lex_registers() {
-        let registers = vec!["V0", "V1", "V2", "V3", "V4", "V5", "V6", "V7", "V8", "V9", "VA", "VB", "VC", "VD", "VE", "VF", "DT", "ST"];
+        let registers = vec!["V0", "V1", "V2", "V3", "V4", "V5", "V6", "V7", "V8", "V9", "VA", "VB", "VC", "VD", "VE", "VF", "DT", "ST", "F"];
 
         for register in registers.iter() {
             let result = lex_registers(register.as_bytes());
@@ -202,6 +232,16 @@ mod tests {
         for directive in directives.iter() {
             let result = lex_directives(directive.as_bytes());
             assert_eq!(result, IResult::Done(&b""[..], Token::Directive(directive.to_string().clone())));
+        }
+    }
+
+    #[test]
+    fn test_lex_instructions() {
+        let instructions = vec!["CLS", "RET", "SYS", "JP", "CALL", "SE", "SNE", "LD", "ADD", "OR", "AND", "XOR", "SUB", "SHR", "SUBN", "SHL", "JR", "RND", "DRW", "SKP", "SKNP"];
+
+        for instr in instructions.iter() {
+            let result = lex_instructions(instr.as_bytes());
+            assert_eq!(result, IResult::Done(&b""[..], Token::Instruction(instr.to_string().clone())));
         }
     }
 }
