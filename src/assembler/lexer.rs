@@ -58,6 +58,11 @@ named!(lex_numeric_literal<&[u8], Token>,
     )
 );
 
+/// Parse column separator characters (spaces and tabs)
+named!(lex_column_sep,
+    take_while1_s!(is_space)
+);
+
 /// Convert input bytes into tokens
 pub fn tokenize(input: &[u8]) -> Result<Vec<Token>, TokenError> {
     let tokens: Vec<Token> = Vec::new();
@@ -107,5 +112,21 @@ mod tests {
         let result = lex_numeric_literal(input);
 
         assert_eq!(result, IResult::Done(&b""[..], Token::NumericLiteral(255)));
+    }
+
+    #[test]
+    fn test_lex_column_sep_parse_all() {
+        let input = " \t  \t\t".as_bytes();
+        let result = lex_column_sep(input);
+
+        assert_eq!(result, IResult::Done(&b""[..], input));
+    }
+    
+    #[test]
+    fn test_lex_column_sep_parse_until() {
+        let input = " \t  \t\thello".as_bytes();
+        let result = lex_column_sep(input);
+
+        assert_eq!(result, IResult::Done(&b"hello"[..], &b" \t  \t\t"[..]));
     }
 }
