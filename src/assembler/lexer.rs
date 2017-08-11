@@ -149,6 +149,14 @@ named!(lex_comments,
     )
 );
 
+/// Parse line ending
+named!(lex_line_ending, 
+    alt_complete!(
+        tag!("\r\n") |
+        tag!("\n")
+    )
+);
+
 /// Convert input bytes into tokens
 pub fn tokenize(input: &[u8]) -> Result<Vec<Token>, TokenError> {
     let tokens: Vec<Token> = Vec::new();
@@ -260,5 +268,21 @@ mod tests {
         let result = lex_comments(input);
 
         assert_eq!(result, IResult::Done(&b"\n"[..], &b" this is a comment"[..]));
+    }
+
+    #[test]
+    fn test_lex_line_ending_lf() {
+        let input = "\n".as_bytes();
+        let result = lex_line_ending(input);
+
+        assert_eq!(result, IResult::Done(&b""[..], input));
+    }
+
+    #[test]
+    fn test_lex_line_ending_crlf() {
+        let input = "\r\n".as_bytes();
+        let result = lex_line_ending(input);
+
+        assert_eq!(result, IResult::Done(&b""[..], input));
     }
 }
