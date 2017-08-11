@@ -63,9 +63,37 @@ named!(lex_column_sep,
     take_while1_s!(is_space)
 );
 
+/// Parse commas
 named!(lex_comma<&[u8], Token>,
     do_parse!(
         tag!(",") >> (Token::Comma)
+    )
+);
+
+named!(lex_registers<&[u8], Token>,
+    do_parse!(
+        reg: map_res!(map_res!(alt!(
+            tag!("V0") |
+            tag!("V1") |
+            tag!("V2") |
+            tag!("V3") |
+            tag!("V4") |
+            tag!("V5") |
+            tag!("V6") |
+            tag!("V7") |
+            tag!("V8") |
+            tag!("V9") |
+            tag!("VA") |
+            tag!("VB") |
+            tag!("VC") |
+            tag!("VD") |
+            tag!("VE") |
+            tag!("VF") |
+            tag!("DT") |
+            tag!("ST") |
+            tag!("F")
+        ), from_utf8), FromStr::from_str) >>
+        (Token::Register(reg))
     )
 );
 
@@ -142,5 +170,15 @@ mod tests {
         let result = lex_comma(input);
 
         assert_eq!(result, IResult::Done(&b""[..], Token::Comma));
+    }
+
+    #[test]
+    fn test_lex_registers() {
+        let registers = vec!["V0", "V1", "V2", "V3", "V4", "V5", "V6", "V7", "V8", "V9", "VA", "VB", "VC", "VD", "VE", "VF", "DT", "ST"];
+
+        for register in registers.iter() {
+            let result = lex_registers(register.as_bytes());
+            assert_eq!(result, IResult::Done(&b""[..], Token::Register(register.to_string().clone())));
+        }
     }
 }
