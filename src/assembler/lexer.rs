@@ -63,6 +63,12 @@ named!(lex_column_sep,
     take_while1_s!(is_space)
 );
 
+named!(lex_comma<&[u8], Token>,
+    do_parse!(
+        tag!(",") >> (Token::Comma)
+    )
+);
+
 /// Convert input bytes into tokens
 pub fn tokenize(input: &[u8]) -> Result<Vec<Token>, TokenError> {
     let tokens: Vec<Token> = Vec::new();
@@ -128,5 +134,13 @@ mod tests {
         let result = lex_column_sep(input);
 
         assert_eq!(result, IResult::Done(&b"hello"[..], &b" \t  \t\t"[..]));
+    }
+
+    #[test]
+    fn test_lex_comma() {
+        let input = ",".as_bytes();
+        let result = lex_comma(input);
+
+        assert_eq!(result, IResult::Done(&b""[..], Token::Comma));
     }
 }
