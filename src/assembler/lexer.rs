@@ -70,6 +70,7 @@ named!(lex_comma<&[u8], Token>,
     )
 );
 
+/// Parse Registers
 named!(lex_registers<&[u8], Token>,
     do_parse!(
         reg: map_res!(map_res!(alt!(
@@ -94,6 +95,18 @@ named!(lex_registers<&[u8], Token>,
             tag!("F")
         ), from_utf8), FromStr::from_str) >>
         (Token::Register(reg))
+    )
+);
+
+/// Parse Directives
+/// TODO: Add more directives...
+named!(lex_directives<&[u8], Token>,
+    do_parse!(
+        directive: map_res!(map_res!(alt!(
+            tag!("org") |
+            tag!("todo")
+        ), from_utf8), FromStr::from_str) >>
+        (Token::Directive(directive))
     )
 );
 
@@ -179,6 +192,16 @@ mod tests {
         for register in registers.iter() {
             let result = lex_registers(register.as_bytes());
             assert_eq!(result, IResult::Done(&b""[..], Token::Register(register.to_string().clone())));
+        }
+    }
+
+    #[test]
+    fn test_lex_directives() {
+        let directives = vec!["org", "todo"];
+
+        for directive in directives.iter() {
+            let result = lex_directives(directive.as_bytes());
+            assert_eq!(result, IResult::Done(&b""[..], Token::Directive(directive.to_string().clone())));
         }
     }
 }
