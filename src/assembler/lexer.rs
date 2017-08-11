@@ -140,6 +140,15 @@ named!(lex_instructions<&[u8], Token>,
     )
 );
 
+/// Consume comments
+named!(lex_comments,
+    do_parse!(
+        tag!(";") >>
+        bytes: not_line_ending >> 
+        (bytes)
+    )
+);
+
 /// Convert input bytes into tokens
 pub fn tokenize(input: &[u8]) -> Result<Vec<Token>, TokenError> {
     let tokens: Vec<Token> = Vec::new();
@@ -243,5 +252,13 @@ mod tests {
             let result = lex_instructions(instr.as_bytes());
             assert_eq!(result, IResult::Done(&b""[..], Token::Instruction(instr.to_string().clone())));
         }
+    }
+
+    #[test]
+    fn test_lex_comments() {
+        let input = "; this is a comment\n".as_bytes();
+        let result = lex_comments(input);
+
+        assert_eq!(result, IResult::Done(&b"\n"[..], &b" this is a comment"[..]));
     }
 }
