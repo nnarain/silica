@@ -5,11 +5,11 @@ use std::u32;
 use nom::*;
 
 /// Error type if lexer encounters an error in the bit stream
-pub struct TokenError {
+pub struct LexerError {
     message: String
 }
 
-impl fmt::Debug for TokenError {
+impl fmt::Debug for LexerError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.message)
     }
@@ -269,10 +269,20 @@ named!(lex_lines<&[u8], Vec<Token>>,
 );
 
 /// Convert input bytes into tokens
-pub fn tokenize(input: &[u8]) -> Result<Vec<Token>, TokenError> {
-    let tokens: Vec<Token> = Vec::new();
+pub fn tokenize(input: &[u8]) -> Result<Vec<Token>, LexerError> {
+    let lexer_result = lex_lines(input);
 
-    Ok(tokens)
+    match lexer_result {
+        IResult::Done(_, tokens) => {
+            Ok(tokens)
+        },
+        IResult::Error(_) => {
+            Err(LexerError{message: String::from("Error in lexer")})
+        },
+        IResult::Incomplete(_) => {
+            Err(LexerError{message: String::from("Error in lexer")})
+        }
+    }
 }
 
 #[cfg(test)]
