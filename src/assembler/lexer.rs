@@ -111,7 +111,7 @@ named!(lex_directives<&[u8], Token>,
 );
 
 // Parse Instructions
-named!(lex_instructions<&[u8], Token>, 
+named!(lex_mnem<&[u8], Token>, 
     do_parse!(
         instr: map_res!(map_res!(alt_complete!(
             tag!("CLS")  |
@@ -140,6 +140,33 @@ named!(lex_instructions<&[u8], Token>,
     )
 );
 
+/// Parse an instruction
+named!(lex_instruction<&[u8], Vec<Token>>,
+    do_parse!(
+        mnem: lex_mnem >>
+        opt!(lex_column_sep) >>
+        operand1: opt!(alt_complete!(lex_registers | lex_numeric_literal)) >>
+        opt!(lex_column_sep) >>
+        comma: opt!(lex_comma) >>
+        opt!(lex_column_sep) >>
+        operand2: opt!(alt_complete!(lex_registers | lex_numeric_literal)) >>
+        ({
+            let mut ret = vec![mnem];
+            if let Some(operand1) = operand1 {
+                ret.push(operand1);
+            }
+            if let Some(comma) = comma {
+                ret.push(comma);
+            }
+            if let Some(operand2) = operand2 {
+                ret.push(operand2);
+            }
+
+            ret
+        })
+    )
+);
+
 /// Consume comments
 named!(lex_comments,
     do_parse!(
@@ -156,6 +183,56 @@ named!(lex_line_ending,
         tag!("\n")
     )
 );
+
+/// Parse what single assembly line can end with
+named!(lex_line_termination,
+    do_parse!(
+        opt!(lex_column_sep) >>
+        opt!(lex_comments) >>
+        bytes: lex_line_ending >> 
+        (bytes)
+    )
+);
+
+/// Parse line combination 1
+/// \r\n
+named!(lex_line1<&[u8], Vec<Token>>,
+    do_parse!(
+        lex_line_ending >>
+        (Vec::new())
+    )
+);
+
+/// Parse line combination 2
+/// \t\t org $200
+named!(lex_line2<&[u8], Vec<Token>>,
+    do_parse!(
+        lex_column_sep >>
+        directive: lex_directives >>
+        lex_column_sep >>
+        numeric: lex_numeric_literal >>
+        lex_line_termination >>
+        (vec![directive, numeric])
+    )
+);
+
+/// Parse line combination 3
+/// label
+named!(lex_line3<&[u8], Vec<Token>>, 
+    do_parse!(
+        label: lex_label >>
+        lex_line_termination >>
+        (vec![label])
+    )
+);
+
+/// Parse line combination 4
+///
+// named!(lex_line4<&[u8], Vec<Token>>
+//     do_parse!(
+
+//     )
+// );
 
 /// Convert input bytes into tokens
 pub fn tokenize(input: &[u8]) -> Result<Vec<Token>, TokenError> {
@@ -253,11 +330,11 @@ mod tests {
     }
 
     #[test]
-    fn test_lex_instructions() {
+    fn test_lex_mnem() {
         let instructions = vec!["CLS", "RET", "SYS", "JP", "CALL", "SE", "SNE", "LD", "ADD", "OR", "AND", "XOR", "SUB", "SHR", "SUBN", "SHL", "JR", "RND", "DRW", "SKP", "SKNP"];
 
         for instr in instructions.iter() {
-            let result = lex_instructions(instr.as_bytes());
+            let result = lex_mnem(instr.as_bytes());
             assert_eq!(result, IResult::Done(&b""[..], Token::Instruction(instr.to_string().clone())));
         }
     }
@@ -284,5 +361,116 @@ mod tests {
         let result = lex_line_ending(input);
 
         assert_eq!(result, IResult::Done(&b""[..], input));
+    }
+
+    #[test]
+    fn test_lex_line_termination1() {
+        let input = " ; comment\r\n".as_bytes();
+        let result = lex_line_termination(input);
+
+        assert_eq!(result, IResult::Done(&b""[..], &b"\r\n"[..]));
+    }
+
+    #[test]
+    fn test_lex_line_termination2() {
+        let input = "; comment\r\n".as_bytes();
+        let result = lex_line_termination(input);
+
+        assert_eq!(result, IResult::Done(&b""[..], &b"\r\n"[..]));
+    }
+
+    #[test]
+    fn test_lex_line_termination3() {
+        let input = "\r\n".as_bytes();
+        let result = lex_line_termination(input);
+
+        assert_eq!(result, IResult::Done(&b""[..], &b"\r\n"[..]));
+    }
+
+    #[test]
+    fn test_lex_line1_lf() {
+        let input = "\n".as_bytes();
+        let result = lex_line1(input);
+
+        assert_eq!(result, IResult::Done(&b""[..], Vec::new()));
+    }
+
+    #[test]
+    fn test_lex_line1_crlf() {
+        let input = "\r\n".as_bytes();
+        let result = lex_line1(input);
+
+        assert_eq!(result, IResult::Done(&b""[..], Vec::new()));
+    }
+
+    #[test]
+    fn test_lex_line2() {
+        let input = "\t\t\t\t  org $200\n".as_bytes();
+        let result = lex_line2(input);
+
+        let expected_directive = Token::Directive(String::from("org"));
+        let expected_numeric = Token::NumericLiteral(0x200u32);
+
+        assert_eq!(result, IResult::Done(&b""[..], vec![expected_directive, expected_numeric]));
+    }
+
+    #[test]
+    fn test_lex_line3() {
+        let input = "label\n".as_bytes();
+        let result = lex_line3(input);
+
+        let expected_directive = Token::Label(String::from("label"));
+
+        assert_eq!(result, IResult::Done(&b""[..], vec![expected_directive]));
+    }
+
+    #[test]
+    fn test_lex_instruction1() {
+        let input = "RET\n".as_bytes();
+        let result = lex_instruction(input);
+
+        let expected_tokens = vec![Token::Instruction(String::from("RET"))];
+
+        assert_eq!(result, IResult::Done(&b"\n"[..], expected_tokens));
+    }
+    
+    #[test]
+    fn test_lex_instruction2() {
+        let input = "JP $200\n".as_bytes();
+        let result = lex_instruction(input);
+
+        let expected_tokens = vec![Token::Instruction(String::from("JP")), Token::NumericLiteral(0x200)];
+
+        assert_eq!(result, IResult::Done(&b"\n"[..], expected_tokens));
+    }
+
+    #[test]
+    fn test_lex_instruction3() {
+        let input = "LD V0, V1\n".as_bytes();
+        let result = lex_instruction(input);
+
+        let expected_tokens = vec![
+            Token::Instruction(String::from("LD")),
+            Token::Register(String::from("V0")),
+            Token::Comma,
+            Token::Register(String::from("V1"))
+        ];
+
+        assert_eq!(result, IResult::Done(&b"\n"[..], expected_tokens));
+    }
+
+    #[test]
+    fn test_lex_instruction4() {
+        let input = "LD V0, $FF\n".as_bytes();
+        let result = lex_instruction(input);
+
+        let expected_tokens = vec![
+            Token::Instruction(String::from("LD")),
+            Token::Register(String::from("V0")),
+            Token::Comma,
+            Token::NumericLiteral(0xFF)
+        ];
+
+        assert_eq!(result, IResult::Done(&b"\n"[..], expected_tokens));
     }
 }
