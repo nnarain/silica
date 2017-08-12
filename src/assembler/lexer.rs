@@ -257,6 +257,17 @@ named!(lex_line5<&[u8], Vec<Token>>,
     )
 );
 
+/// Combined line parser
+named!(lex_lines<&[u8], Vec<Token>>,
+    alt_complete!(
+        lex_line1 |
+        lex_line2 |
+        lex_line3 |
+        lex_line4 |
+        lex_line5
+    )
+);
+
 /// Convert input bytes into tokens
 pub fn tokenize(input: &[u8]) -> Result<Vec<Token>, TokenError> {
     let tokens: Vec<Token> = Vec::new();
@@ -523,6 +534,50 @@ mod tests {
             Token::Register(String::from("V0")),
             Token::Comma,
             Token::Register(String::from("V1"))
+        ];
+
+        assert_eq!(result, IResult::Done(&b""[..], expected_tokens));
+    }
+
+    #[test]
+    fn test_lex_lines1() {
+        let input = "label\t\t LD V0, V1\n".as_bytes();
+        let result = lex_lines(input);
+
+        let expected_tokens = vec![
+            Token::Label(String::from("label")),
+            Token::Instruction(String::from("LD")),
+            Token::Register(String::from("V0")),
+            Token::Comma,
+            Token::Register(String::from("V1"))
+        ];
+
+        assert_eq!(result, IResult::Done(&b""[..], expected_tokens));
+    }
+
+    #[test]
+    fn test_lex_lines2() {
+        let input = "\t\t LD V0, V1\n".as_bytes();
+        let result = lex_lines(input);
+
+        let expected_tokens = vec![
+            Token::Instruction(String::from("LD")),
+            Token::Register(String::from("V0")),
+            Token::Comma,
+            Token::Register(String::from("V1"))
+        ];
+
+        assert_eq!(result, IResult::Done(&b""[..], expected_tokens));
+    }
+
+    #[test]
+    fn test_lex_lines3() {
+        let input = "\t\t org $200\n".as_bytes();
+        let result = lex_lines(input);
+
+        let expected_tokens = vec![
+            Token::Directive(String::from("org")),
+            Token::NumericLiteral(0x200)
         ];
 
         assert_eq!(result, IResult::Done(&b""[..], expected_tokens));
