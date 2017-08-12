@@ -16,7 +16,7 @@ impl fmt::Debug for TokenError {
 }
 
 /// Possible tokens that can exist in the Chip8 assembly file
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Token {
     Directive(String),
     Label(String),
@@ -227,12 +227,35 @@ named!(lex_line3<&[u8], Vec<Token>>,
 );
 
 /// Parse line combination 4
-///
-// named!(lex_line4<&[u8], Vec<Token>>
-//     do_parse!(
+/// LD V0, V1
+named!(lex_line4<&[u8], Vec<Token>>,
+    do_parse!(
+        lex_column_sep >>
+        instrs: lex_instruction >>
+        lex_line_termination >>
+        (instrs)
+    )
+);
 
-//     )
-// );
+/// Parse line combination 5
+/// label LD V0, V1
+named!(lex_line5<&[u8], Vec<Token>>,
+    do_parse!(
+        label: lex_label >>
+        lex_column_sep >>
+        instrs: lex_instruction >>
+        lex_line_termination >>
+        ({
+            let mut tokens = vec![label];
+            
+            for i in instrs.iter() {
+                tokens.push((*i).clone());
+            }
+
+            tokens
+        })
+    )
+);
 
 /// Convert input bytes into tokens
 pub fn tokenize(input: &[u8]) -> Result<Vec<Token>, TokenError> {
@@ -388,43 +411,6 @@ mod tests {
     }
 
     #[test]
-    fn test_lex_line1_lf() {
-        let input = "\n".as_bytes();
-        let result = lex_line1(input);
-
-        assert_eq!(result, IResult::Done(&b""[..], Vec::new()));
-    }
-
-    #[test]
-    fn test_lex_line1_crlf() {
-        let input = "\r\n".as_bytes();
-        let result = lex_line1(input);
-
-        assert_eq!(result, IResult::Done(&b""[..], Vec::new()));
-    }
-
-    #[test]
-    fn test_lex_line2() {
-        let input = "\t\t\t\t  org $200\n".as_bytes();
-        let result = lex_line2(input);
-
-        let expected_directive = Token::Directive(String::from("org"));
-        let expected_numeric = Token::NumericLiteral(0x200u32);
-
-        assert_eq!(result, IResult::Done(&b""[..], vec![expected_directive, expected_numeric]));
-    }
-
-    #[test]
-    fn test_lex_line3() {
-        let input = "label\n".as_bytes();
-        let result = lex_line3(input);
-
-        let expected_directive = Token::Label(String::from("label"));
-
-        assert_eq!(result, IResult::Done(&b""[..], vec![expected_directive]));
-    }
-
-    #[test]
     fn test_lex_instruction1() {
         let input = "RET\n".as_bytes();
         let result = lex_instruction(input);
@@ -472,5 +458,73 @@ mod tests {
         ];
 
         assert_eq!(result, IResult::Done(&b"\n"[..], expected_tokens));
+    }
+
+    #[test]
+    fn test_lex_line1_lf() {
+        let input = "\n".as_bytes();
+        let result = lex_line1(input);
+
+        assert_eq!(result, IResult::Done(&b""[..], Vec::new()));
+    }
+
+    #[test]
+    fn test_lex_line1_crlf() {
+        let input = "\r\n".as_bytes();
+        let result = lex_line1(input);
+
+        assert_eq!(result, IResult::Done(&b""[..], Vec::new()));
+    }
+
+    #[test]
+    fn test_lex_line2() {
+        let input = "\t\t\t\t  org $200\n".as_bytes();
+        let result = lex_line2(input);
+
+        let expected_directive = Token::Directive(String::from("org"));
+        let expected_numeric = Token::NumericLiteral(0x200u32);
+
+        assert_eq!(result, IResult::Done(&b""[..], vec![expected_directive, expected_numeric]));
+    }
+
+    #[test]
+    fn test_lex_line3() {
+        let input = "label\n".as_bytes();
+        let result = lex_line3(input);
+
+        let expected_directive = Token::Label(String::from("label"));
+
+        assert_eq!(result, IResult::Done(&b""[..], vec![expected_directive]));
+    }
+
+    #[test]
+    fn test_lex_line4() {
+        let input = "\t\t LD V0, V1\n".as_bytes();
+        let result = lex_line4(input);
+
+        let expected_tokens = vec![
+            Token::Instruction(String::from("LD")),
+            Token::Register(String::from("V0")),
+            Token::Comma,
+            Token::Register(String::from("V1"))
+        ];
+
+        assert_eq!(result, IResult::Done(&b""[..], expected_tokens));
+    }
+
+    #[test]
+    fn test_lex_line5() {
+        let input = "label\t\t LD V0, V1\n".as_bytes();
+        let result = lex_line5(input);
+
+        let expected_tokens = vec![
+            Token::Label(String::from("label")),
+            Token::Instruction(String::from("LD")),
+            Token::Register(String::from("V0")),
+            Token::Comma,
+            Token::Register(String::from("V1"))
+        ];
+
+        assert_eq!(result, IResult::Done(&b""[..], expected_tokens));
     }
 }
