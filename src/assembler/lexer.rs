@@ -259,12 +259,26 @@ named!(lex_line5<&[u8], Vec<Token>>,
 
 /// Combined line parser
 named!(lex_lines<&[u8], Vec<Token>>,
-    alt_complete!(
-        lex_line1 |
-        lex_line2 |
-        lex_line3 |
-        lex_line4 |
-        lex_line5
+    do_parse!(
+        line_tokens: many0!(
+            alt_complete!(
+                lex_line1 |
+                lex_line2 |
+                lex_line3 |
+                lex_line4 |
+                lex_line5
+            )
+        ) >>
+        ({
+            let mut ret = Vec::new();
+            for tokens in line_tokens.iter() {
+                for token in tokens.iter() {
+                    ret.push((*token).clone());
+                }
+            }
+
+            ret
+        })
     )
 );
 
