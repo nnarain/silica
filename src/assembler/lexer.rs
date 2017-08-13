@@ -23,6 +23,7 @@ pub enum Token {
     Instruction(String),
     Register(String),
     NumericLiteral(u32),
+    LabelOperand(String),
     Comma
 }
 
@@ -140,12 +141,21 @@ named!(lex_mnem<&[u8], Token>,
     )
 );
 
+/// Parse a label operand
+named!(lex_label_operand<&[u8], Token>,
+    do_parse!(
+        tag!("#") >>
+        label_operand: map_res!(map_res!(alphanumeric, from_utf8), FromStr::from_str) >>
+        (Token::LabelOperand(label_operand))
+    )
+);
+
 /// Parse an instruction
 named!(lex_instruction<&[u8], Vec<Token>>,
     do_parse!(
         mnem: lex_mnem >>
         opt!(lex_column_sep) >>
-        operand1: opt!(alt_complete!(lex_registers | lex_numeric_literal)) >>
+        operand1: opt!(alt_complete!(lex_registers | lex_numeric_literal | lex_label_operand)) >>
         opt!(lex_column_sep) >>
         comma: opt!(lex_comma) >>
         opt!(lex_column_sep) >>
@@ -368,6 +378,14 @@ mod tests {
     }
 
     #[test]
+    fn test_label_operand() {
+        let input = "#label".as_bytes();
+        let result = lex_label_operand(input);
+
+        assert_eq!(result, IResult::Done(&b""[..], Token::LabelOperand(String::from("label"))));
+    }
+
+    #[test]
     fn test_lex_registers() {
         let registers = vec!["V0", "V1", "V2", "V3", "V4", "V5", "V6", "V7", "V8", "V9", "VA", "VB", "VC", "VD", "VE", "VF", "DT", "ST", "F"];
 
@@ -490,6 +508,19 @@ mod tests {
             Token::Register(String::from("V0")),
             Token::Comma,
             Token::NumericLiteral(0xFF)
+        ];
+
+        assert_eq!(result, IResult::Done(&b"\n"[..], expected_tokens));
+    }
+
+    #[test]
+    fn test_lex_instruction5() {
+        let input = "JP #label\n".as_bytes();
+        let result = lex_instruction(input);
+
+        let expected_tokens = vec![
+            Token::Instruction(String::from("JP")),
+            Token::LabelOperand(String::from("label"))
         ];
 
         assert_eq!(result, IResult::Done(&b"\n"[..], expected_tokens));
