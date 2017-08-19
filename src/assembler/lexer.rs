@@ -1,18 +1,12 @@
-use std::fmt;
 use std::str::{from_utf8, FromStr};
 use std::u32;
 
 use nom::*;
 
 /// Error type if lexer encounters an error in the bit stream
+#[derive(Debug)]
 pub struct LexerError {
     message: String
-}
-
-impl fmt::Debug for LexerError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.message)
-    }
 }
 
 /// Possible tokens that can exist in the Chip8 assembly file

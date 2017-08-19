@@ -1,10 +1,14 @@
 use assembler::lexer::*;
-use std::io::Error;
-
 use nom::*;
 
 /// an expression is a certain combination of tokens
 pub type Expression = Vec<Token>;
+
+/// parser errors
+#[derive(Debug)]
+pub struct ParserError {
+    message: String
+}
 
 macro_rules! tag_token {
     ($i: expr, $tag: pat) => (
@@ -92,9 +96,28 @@ named!(parse_instructions<&[Token], Expression>,
     )
 );
 
+/// parse expressions from the token stream
+named!(parse_expressions<&[Token], Vec<Expression>>,
+    do_parse!(
+        exprs: many0!(
+            alt_complete!(
+                parse_directive |
+                parse_label |
+                parse_instructions
+            )
+        ) >>
+        (exprs)
+    )
+);
+
 /// parse expressions from tokens
-pub fn parse_expressions(tokens: Vec<Token>) -> Result<Vec<Expression>, Error> {
-    Ok(vec![])
+pub fn parse(tokens: Vec<Token>) -> Result<Vec<Expression>, ParserError> {
+    let result = parse_expressions(&tokens[..]);
+
+    match result {
+        IResult::Done(_, exprs) => Ok(exprs),
+        _ => Err(ParserError{message: String::from("Error parsing tokens")})
+    }
 }
 
 #[cfg(test)]
@@ -194,5 +217,21 @@ mod tests {
             Token::Instruction(String::from("JP")),
             Token::LabelOperand(String::from("end"))
         ]));
-    }    
+    }
+
+    #[test]
+    fn test_parse1() {
+        let input = vec![
+            Token::Directive(String::from("org")), Token::NumericLiteral(0x200),
+            Token::Label(String::from("entry")),
+            Token::Instruction(String::from("CLS"))
+        ];
+        let result = parse(input).unwrap();
+
+        assert_eq!(result, vec![
+            vec![Token::Directive(String::from("org")), Token::NumericLiteral(0x200)],
+            vec![Token::Label(String::from("entry"))],
+            vec![Token::Instruction(String::from("CLS"))]
+        ]);
+    }
 }
