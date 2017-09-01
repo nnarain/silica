@@ -21,6 +21,27 @@ pub enum Token {
     Comma
 }
 
+impl Token {
+    pub fn is_register(&self) -> bool {
+        match *self {
+            Token::Register(_) => true,
+            _ => false
+        }
+    }
+    pub fn is_numeric_literal(&self) -> bool {
+        match *self {
+            Token::NumericLiteral(_) => true,
+            _ => false
+        }
+    }
+    pub fn is_label_operand(&self) -> bool {
+        match *self {
+            Token::LabelOperand(_) => true,
+            _ => false
+        }
+    }
+}
+
 /// parse a label
 named!(lex_label<&[u8], Token>,
     do_parse!(
