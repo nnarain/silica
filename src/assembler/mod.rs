@@ -15,16 +15,9 @@ pub fn assemble(input_data: Vec<u8>) -> Result<Vec<u8>, Error> {
     // transform tokens into expressions
     let exprs = parser::parse(tokens).unwrap();
 
-    // code generator
-    let mut codegen = CodeGenerator::new();
+    // generate opcodes from the expressions
+    let codegen = CodeGenerator::new();
+    let opcodes = codegen.generate(exprs);
 
-    // iterate over the expressions
-    for expr in exprs.iter() {
-        // check if they are valid
-        semantics::check(expr).unwrap();
-        // and pass the code generator
-        codegen.add(expr);
-    }
-
-    Ok(vec![])
+    Ok(opcodes)
 }
