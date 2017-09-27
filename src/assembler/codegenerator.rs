@@ -122,6 +122,8 @@ impl CodeGenerator {
                 "SHL" => self.process_sub_instruction(expr, 0x0E),
                 "SKP" => self.process_skip_instruction(expr, 0x9E),
                 "SKNP" => self.process_skip_instruction(expr, 0xA1),
+                "RND" => self.process_rnd_instruction(expr),
+                "DRW" => self.process_draw_instruction(expr),
                 _ => {} 
             }
         }
@@ -214,6 +216,28 @@ impl CodeGenerator {
         if let Token::Register(ref reg) = expr[1] {
             let num = self.register_name_to_u8(reg);
             self.append_opcode(0xE0u8 | num, last);
+        }
+    }
+
+    fn process_rnd_instruction(&mut self, expr: &Expression) {
+        if let Token::Register(ref reg) = expr[1] {
+            if let Token::NumericLiteral(n) = expr[2] {
+                let reg_num = self.register_name_to_u8(reg);
+                self.append_opcode(0xC0 | reg_num, n as u8);
+            }
+        }
+    }
+
+    fn process_draw_instruction(&mut self, expr: &Expression) {
+        if let Token::Register(ref reg1) = expr[1] {
+            if let Token::Register(ref reg2) = expr[2] {
+                if let Token::NumericLiteral(n) = expr[3] {
+                    let reg1_num = self.register_name_to_u8(reg1);
+                    let reg2_num = self.register_name_to_u8(reg2);
+
+                    self.append_opcode(0xD0 | reg1_num, (reg2_num << 4) | n as u8);
+                }
+            }
         }
     }
 
@@ -414,7 +438,7 @@ mod tests {
     fn test_sknp() {
         let expr = vec![
             Token::Instruction(String::from("SKNP")),
-            Token::Register(String::from("V0"))         
+            Token::Register(String::from("V0"))
         ];
 
         let codegen = CodeGenerator::new();
@@ -422,5 +446,36 @@ mod tests {
 
         assert_eq!(opcodes[0], 0xE0);
         assert_eq!(opcodes[1], 0xA1);
+    }
+
+    #[test]
+    fn test_rnd() {
+        let expr = vec![
+            Token::Instruction(String::from("RND")),
+            Token::Register(String::from("V0")),
+            Token::NumericLiteral(0xFF)
+        ];
+
+        let codegen = CodeGenerator::new();
+        let opcodes = codegen.generate(vec![expr]);
+
+        assert_eq!(opcodes[0], 0xC0);
+        assert_eq!(opcodes[1], 0xFF);
+    }
+
+    #[test]
+    fn test_drw() {
+        let expr = vec![
+            Token::Instruction(String::from("DRW")),
+            Token::Register(String::from("V0")),
+            Token::Register(String::from("V1")),
+            Token::NumericLiteral(0xF)
+        ];
+
+        let codegen = CodeGenerator::new();
+        let opcodes = codegen.generate(vec![expr]);
+
+        assert_eq!(opcodes[0], 0xD0);
+        assert_eq!(opcodes[1], 0x1F);
     }
 }
