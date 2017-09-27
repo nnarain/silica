@@ -116,6 +116,12 @@ impl CodeGenerator {
                 "AND" => self.process_logical_instruction(0x02, expr),
                 "XOR" => self.process_logical_instruction(0x03, expr),
                 "ADD" => self.process_add_instruction(expr),
+                "SUB" => self.process_sub_instruction(expr, 0x05),
+                "SHR" => self.process_sub_instruction(expr, 0x06),
+                "SUBN" => self.process_sub_instruction(expr, 0x07),
+                "SHL" => self.process_sub_instruction(expr, 0x0E),
+                "SKP" => self.process_skip_instruction(expr, 0x9E),
+                "SKNP" => self.process_skip_instruction(expr, 0xA1),
                 _ => {} 
             }
         }
@@ -190,6 +196,24 @@ impl CodeGenerator {
                 let reg_num = self.register_name_to_u8(reg);
                 self.append_opcode(0xF0u8 | reg_num, 0x1Eu8);
             }
+        }
+    }
+
+    fn process_sub_instruction(&mut self, expr: &Expression, last: u8) {
+        if let Token::Register(ref reg1) = expr[1] {
+            if let Token::Register(ref reg2) = expr[2] {
+                let reg1_num = self.register_name_to_u8(reg1);
+                let reg2_num = self.register_name_to_u8(reg2);
+
+                self.append_opcode(0x80 | reg1_num, last |  (reg2_num << 4));
+            }
+        }
+    }
+
+    fn process_skip_instruction(&mut self, expr: &Expression, last: u8) {
+        if let Token::Register(ref reg) = expr[1] {
+            let num = self.register_name_to_u8(reg);
+            self.append_opcode(0xE0u8 | num, last);
         }
     }
 
@@ -310,5 +334,93 @@ mod tests {
 
         assert_eq!(opcodes[0], 0xF0);
         assert_eq!(opcodes[1], 0x1E);
+    }
+
+    #[test]
+    fn test_sub() {
+        let expr = vec![
+            Token::Instruction(String::from("SUB")),
+            Token::Register(String::from("V0")),
+            Token::Register(String::from("V1"))            
+        ];
+
+        let codegen = CodeGenerator::new();
+        let opcodes = codegen.generate(vec![expr]);
+
+        assert_eq!(opcodes[0], 0x80);
+        assert_eq!(opcodes[1], 0x15);
+    }
+
+    #[test]
+    fn test_shr() {
+        let expr = vec![
+            Token::Instruction(String::from("SHR")),
+            Token::Register(String::from("V0")),
+            Token::Register(String::from("V1"))            
+        ];
+
+        let codegen = CodeGenerator::new();
+        let opcodes = codegen.generate(vec![expr]);
+
+        assert_eq!(opcodes[0], 0x80);
+        assert_eq!(opcodes[1], 0x16);
+    }
+
+    #[test]
+    fn test_sh1() {
+        let expr = vec![
+            Token::Instruction(String::from("SHL")),
+            Token::Register(String::from("V0")),
+            Token::Register(String::from("V1"))            
+        ];
+
+        let codegen = CodeGenerator::new();
+        let opcodes = codegen.generate(vec![expr]);
+
+        assert_eq!(opcodes[0], 0x80);
+        assert_eq!(opcodes[1], 0x1E);
+    }
+
+    #[test]
+    fn test_subn() {
+        let expr = vec![
+            Token::Instruction(String::from("SUBN")),
+            Token::Register(String::from("V0")),
+            Token::Register(String::from("V1"))            
+        ];
+
+        let codegen = CodeGenerator::new();
+        let opcodes = codegen.generate(vec![expr]);
+
+        assert_eq!(opcodes[0], 0x80);
+        assert_eq!(opcodes[1], 0x17);
+    }
+
+    #[test]
+    fn test_skp() {
+        let expr = vec![
+            Token::Instruction(String::from("SKP")),
+            Token::Register(String::from("V0"))         
+        ];
+
+        let codegen = CodeGenerator::new();
+        let opcodes = codegen.generate(vec![expr]);
+
+        assert_eq!(opcodes[0], 0xE0);
+        assert_eq!(opcodes[1], 0x9E);
+    }
+
+    #[test]
+    fn test_sknp() {
+        let expr = vec![
+            Token::Instruction(String::from("SKNP")),
+            Token::Register(String::from("V0"))         
+        ];
+
+        let codegen = CodeGenerator::new();
+        let opcodes = codegen.generate(vec![expr]);
+
+        assert_eq!(opcodes[0], 0xE0);
+        assert_eq!(opcodes[1], 0xA1);
     }
 }
