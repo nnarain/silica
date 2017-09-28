@@ -63,8 +63,15 @@ named!(parse_label<&[Token], Expression>,
 named!(parse_directive<&[Token], Expression>,
     do_parse!(
         directive: tag_token!(Token::Directive(_)) >>
-        num: tag_token!(Token::NumericLiteral(_)) >>
-        (vec![directive, num])
+        nums: many1!(tag_token!(Token::NumericLiteral(_))) >>
+        ({
+            let mut ret = vec![directive];
+            for n in nums.iter() {
+                ret.push((*n).clone());
+            }
+
+            ret
+        })
     )
 );
 
