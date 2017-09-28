@@ -14,15 +14,33 @@ pub fn check(expr: &Expression) -> Result<(), SemanticsError> {
             Ok(())
         },
         // check a directive can only have a numeric literal operand
-        Token::Directive(_) => {
-            if expr.len() != 2 {
-                return Err(SemanticsError{message: String::from("Invalid number of tokens for directive expression")})
-            }
-            match expr[1] {
-                Token::NumericLiteral(_) => {
+        Token::Directive(ref dir) => {
+            match dir.as_ref() {
+                "org" => {
+                    if expr.len() != 2 {
+                        return Err(SemanticsError{message: String::from("Invalid number of tokens for directive expression")})
+                    }
+                    match expr[1] {
+                        Token::NumericLiteral(_) => {
+                            return Ok(())
+                        },
+                        _ => return Err(SemanticsError{message: String::from("Invalid token in directive expression")})
+                    }
+                },
+                "db" => {
+                    for i in 1..expr.len() {
+                        match expr[i] {
+                            Token::NumericLiteral(_) => {},
+                            _ => {
+                                return Err(SemanticsError{message: String::from("Invalid token type in expression for db directive")})
+                            }
+                        }
+                    }
                     return Ok(())
                 },
-                _ => return Err(SemanticsError{message: String::from("Invalid token in directive expression")})
+                _ => {
+                    panic!("Invalid directive: {}", dir);
+                }
             }
         },
         Token::Instruction(ref instr) => {

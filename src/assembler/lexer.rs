@@ -136,7 +136,7 @@ named!(lex_directives<&[u8], Token>,
     do_parse!(
         directive: map_res!(map_res!(alt!(
             tag!("org") |
-            tag!("todo")
+            tag!("db")
         ), from_utf8), FromStr::from_str) >>
         (Token::Directive(directive))
     )
@@ -316,6 +316,35 @@ named!(lex_line6<&[u8], Vec<Token>>,
     )
 );
 
+/// Parse line combination 7
+/// db $0 $1 $2 ...
+named!(lex_numeric_list_item<&[u8], Token>,
+    do_parse!(
+        n: lex_numeric_literal >>
+        opt!(lex_column_sep) >>
+        (n)
+    )
+);
+
+named!(lex_line7<&[u8], Vec<Token>>,
+    do_parse!(
+        lex_column_sep >>
+        directive: lex_directives >>
+        lex_column_sep >>
+        bytes: many1!(lex_numeric_list_item) >>
+        lex_line_termination >>
+        ({
+            let mut tokens = vec![directive];
+            
+            for i in bytes.iter() {
+                tokens.push((*i).clone());
+            }
+
+            tokens
+        })
+    )
+);
+
 /// Combined line parser
 named!(lex_lines<&[u8], Vec<Token>>,
     do_parse!(
@@ -326,7 +355,8 @@ named!(lex_lines<&[u8], Vec<Token>>,
                 lex_line3 |
                 lex_line4 |
                 lex_line5 |
-                lex_line6
+                lex_line6 |
+                lex_line7
             )
         ) >>
         ({
@@ -447,7 +477,7 @@ mod tests {
 
     #[test]
     fn test_lex_directives() {
-        let directives = vec!["org", "todo"];
+        let directives = vec!["org", "db"];
 
         for directive in directives.iter() {
             let result = lex_directives(directive.as_bytes());
@@ -656,6 +686,21 @@ mod tests {
             Token::Register(String::from("V0")),
             Token::Comma,
             Token::Register(String::from("V1"))
+        ];
+
+        assert_eq!(result, IResult::Done(&b""[..], expected_tokens));
+    }
+
+    #[test]
+    fn test_lex_line7() {
+        let input = "\t\t db $00 $01 $02\n".as_bytes();
+        let result = lex_line7(input);
+
+        let expected_tokens = vec![
+            Token::Directive(String::from("db")),
+            Token::NumericLiteral(0x00),
+            Token::NumericLiteral(0x01),
+            Token::NumericLiteral(0x02)
         ];
 
         assert_eq!(result, IResult::Done(&b""[..], expected_tokens));

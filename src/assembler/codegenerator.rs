@@ -86,6 +86,14 @@ impl CodeGenerator {
                         self.address_counter = address;
                     }
                 },
+                "db" => {
+                    for i in 1..expr.len() {
+                        if let Token::NumericLiteral(n) = expr[i] {
+                            self.opcodes[self.address_counter as usize] = n as u8;
+                            self.address_counter += 1;
+                        }
+                    }
+                }
                 _ => {}
             }
         }
@@ -309,6 +317,25 @@ impl CodeGenerator {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_db_directive() {
+        let expr = vec![
+            Token::Directive(String::from("db")),
+            Token::NumericLiteral(0x00),
+            Token::NumericLiteral(0x01),
+            Token::NumericLiteral(0x02),
+            Token::NumericLiteral(0x03)                                    
+        ];
+
+        let codegen = CodeGenerator::new();
+        let opcodes = codegen.generate(vec![expr]);
+
+        assert_eq!(opcodes[0], 0x00);
+        assert_eq!(opcodes[1], 0x01);
+        assert_eq!(opcodes[2], 0x02);
+        assert_eq!(opcodes[3], 0x03);        
+    }
 
     #[test]
     fn test_jp_instruction() {
