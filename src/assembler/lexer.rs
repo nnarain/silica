@@ -28,6 +28,21 @@ impl Token {
             _ => false
         }
     }
+    
+    pub fn is_general_purpose_register(&self) -> bool {
+        match *self {
+            Token::Register(ref reg) =>  {
+                if reg.contains("V") {
+                    true
+                }
+                else {
+                    false
+                }
+            },
+            _ => false
+        }
+    }
+
     pub fn is_numeric_literal(&self) -> bool {
         match *self {
             Token::NumericLiteral(_) => true,

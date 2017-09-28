@@ -1,6 +1,9 @@
 mod lexer;
 mod parser;
 mod semantics;
+mod codegenerator;
+
+use self::codegenerator::CodeGenerator;
 
 use std::io::Error;
 
@@ -12,10 +15,9 @@ pub fn assemble(input_data: Vec<u8>) -> Result<Vec<u8>, Error> {
     // transform tokens into expressions
     let exprs = parser::parse(tokens).unwrap();
 
-    // iterate over the expressions, check if they are valid and pass the code generator
-    for expr in exprs.iter() {
-        semantics::check(expr).unwrap();
-    }
+    // generate opcodes from the expressions
+    let codegen = CodeGenerator::new();
+    let opcodes = codegen.generate(exprs);
 
-    Ok(vec![])
+    Ok(opcodes)
 }
