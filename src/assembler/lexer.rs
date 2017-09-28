@@ -583,9 +583,9 @@ mod tests {
     }
 
     #[test]
-    fn test_lex_line2() {
+    fn test_lex_line3() {
         let input = "\t\t\t\t  org $200\n".as_bytes();
-        let result = lex_line2(input);
+        let result = lex_line3(input);
 
         let expected_directive = Token::Directive(String::from("org"));
         let expected_numeric = Token::NumericLiteral(0x200u32);
@@ -594,9 +594,9 @@ mod tests {
     }
 
     #[test]
-    fn test_lex_line3() {
+    fn test_lex_line4() {
         let input = "label\n".as_bytes();
-        let result = lex_line3(input);
+        let result = lex_line4(input);
 
         let expected_directive = Token::Label(String::from("label"));
 
@@ -604,9 +604,9 @@ mod tests {
     }
 
     #[test]
-    fn test_lex_line4() {
+    fn test_lex_line5() {
         let input = "\t\t LD V0, V1\n".as_bytes();
-        let result = lex_line4(input);
+        let result = lex_line5(input);
 
         let expected_tokens = vec![
             Token::Instruction(String::from("LD")),
@@ -619,9 +619,9 @@ mod tests {
     }
 
     #[test]
-    fn test_lex_line5() {
+    fn test_lex_line6() {
         let input = "label\t\t LD V0, V1\n".as_bytes();
-        let result = lex_line5(input);
+        let result = lex_line6(input);
 
         let expected_tokens = vec![
             Token::Label(String::from("label")),
