@@ -141,12 +141,22 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_directive() {
+    fn test_parse_directive1() {
         let input = vec![Token::Directive(String::from("org")), Token::NumericLiteral(0x200)];
         let result = parse_directive(&input[..]);
         let empty: Vec<Token> = vec![];
 
         assert_eq!(result, IResult::Done(&empty[..], vec![Token::Directive(String::from("org")), Token::NumericLiteral(0x200)]));
+    }
+
+    #[test]
+    fn test_parse_directive2() {
+        let input = vec![Token::Directive(String::from("db")), Token::NumericLiteral(0x00), Token::NumericLiteral(0x01)];
+        let result = parse_directive(&input[..]);
+        let empty: Vec<Token> = vec![];
+
+        assert_eq!(result, IResult::Done(&empty[..], vec![
+            Token::Directive(String::from("db")), Token::NumericLiteral(0x00), Token::NumericLiteral(0x01)]));
     }
 
     #[test]
