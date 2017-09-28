@@ -46,3 +46,8 @@ pub fn load_file(rom_file: &String) -> Result<Vec<u8>, Box<Error>> {
 
     Ok(buffer)
 }
+
+pub fn write_to_file(data: Vec<u8>) {
+    let mut file = File::create("output.c8").unwrap();
+    file.write_all(&data[..]).unwrap();
+}

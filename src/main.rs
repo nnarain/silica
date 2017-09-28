@@ -13,7 +13,7 @@ fn main() {
 
     match silica::assembler::assemble(input_data) {
         Ok(data) => {
-            println!("{:?}", data)
+            silica::write_to_file(data)
         },
         Err(e) => println!("{:?}", e)
     }
