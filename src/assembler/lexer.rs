@@ -191,6 +191,10 @@ named!(lex_instruction<&[u8], Vec<Token>>,
         comma: opt!(lex_comma) >>
         opt!(lex_column_sep) >>
         operand2: opt!(alt_complete!(lex_registers | lex_numeric_literal)) >>
+        opt!(lex_column_sep) >>
+        comma2: opt!(lex_comma) >>
+        opt!(lex_column_sep) >>
+        operand3: opt!(lex_numeric_literal) >>
         ({
             let mut ret = vec![mnem];
             if let Some(operand1) = operand1 {
@@ -201,6 +205,12 @@ named!(lex_instruction<&[u8], Vec<Token>>,
             }
             if let Some(operand2) = operand2 {
                 ret.push(operand2);
+            }
+            if let Some(comma) = comma2 {
+                ret.push(comma);
+            }
+            if let Some(operand3) = operand3 {
+                ret.push(operand3);
             }
 
             ret
@@ -561,6 +571,23 @@ mod tests {
         let expected_tokens = vec![
             Token::Instruction(String::from("JP")),
             Token::LabelOperand(String::from("label"))
+        ];
+
+        assert_eq!(result, IResult::Done(&b"\n"[..], expected_tokens));
+    }
+
+    #[test]
+    fn test_lex_instruction6() {
+        let input = "DRW V0, V1, $0F\n".as_bytes();
+        let result = lex_instruction(input);
+
+        let expected_tokens = vec![
+            Token::Instruction(String::from("DRW")),
+            Token::Register(String::from("V0")),
+            Token::Comma,
+            Token::Register(String::from("V1")),
+            Token::Comma,
+            Token::NumericLiteral(0xF)
         ];
 
         assert_eq!(result, IResult::Done(&b"\n"[..], expected_tokens));
