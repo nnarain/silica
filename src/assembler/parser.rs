@@ -234,4 +234,26 @@ mod tests {
             vec![Token::Instruction(String::from("CLS"))]
         ]);
     }
+
+    #[test]
+    fn test_parse2() {
+        let input = vec![
+            Token::Label(String::from("label1")),
+            Token::Instruction(String::from("LD")), Token::Register(String::from("V1")), Token::NumericLiteral(0xFF),
+            Token::Label(String::from("label2")),
+            Token::Instruction(String::from("LD")), Token::Register(String::from("V0")), Token::NumericLiteral(0x05),
+            Token::Label(String::from("end")),
+            Token::Instruction(String::from("JP")), Token::Register(String::from("#end"))
+        ];
+        let result = parse(input).unwrap();
+
+        assert_eq!(result, vec![
+            vec![Token::Label(String::from("label1"))],
+            vec![Token::Instruction(String::from("LD")), Token::Register(String::from("V1")), Token::NumericLiteral(0xFF)],
+            vec![Token::Label(String::from("label2"))],
+            vec![Token::Instruction(String::from("LD")), Token::Register(String::from("V0")), Token::NumericLiteral(0x05)],
+            vec![Token::Label(String::from("end"))],
+            vec![Token::Instruction(String::from("JP")), Token::Register(String::from("#end"))]
+        ]);
+    }
 }

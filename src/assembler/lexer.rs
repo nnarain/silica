@@ -123,7 +123,8 @@ named!(lex_registers<&[u8], Token>,
             tag!("VF") |
             tag!("DT") |
             tag!("ST") |
-            tag!("F")
+            tag!("F")  |
+            tag!("[I]")
         ), from_utf8), FromStr::from_str) >>
         (Token::Register(reg))
     )
@@ -244,8 +245,16 @@ named!(lex_line1<&[u8], Vec<Token>>,
 );
 
 /// Parse line combination 2
-/// \t\t org $200
 named!(lex_line2<&[u8], Vec<Token>>,
+    do_parse!(
+        lex_line_termination >>
+        (Vec::new())
+    )
+);
+
+/// Parse line combination 3
+/// \t\t org $200
+named!(lex_line3<&[u8], Vec<Token>>,
     do_parse!(
         lex_column_sep >>
         directive: lex_directives >>
@@ -256,9 +265,9 @@ named!(lex_line2<&[u8], Vec<Token>>,
     )
 );
 
-/// Parse line combination 3
+/// Parse line combination 4
 /// label
-named!(lex_line3<&[u8], Vec<Token>>, 
+named!(lex_line4<&[u8], Vec<Token>>, 
     do_parse!(
         label: lex_label >>
         lex_line_termination >>
@@ -266,9 +275,9 @@ named!(lex_line3<&[u8], Vec<Token>>,
     )
 );
 
-/// Parse line combination 4
+/// Parse line combination 5
 /// LD V0, V1
-named!(lex_line4<&[u8], Vec<Token>>,
+named!(lex_line5<&[u8], Vec<Token>>,
     do_parse!(
         lex_column_sep >>
         instrs: lex_instruction >>
@@ -277,9 +286,9 @@ named!(lex_line4<&[u8], Vec<Token>>,
     )
 );
 
-/// Parse line combination 5
+/// Parse line combination 6
 /// label LD V0, V1
-named!(lex_line5<&[u8], Vec<Token>>,
+named!(lex_line6<&[u8], Vec<Token>>,
     do_parse!(
         label: lex_label >>
         lex_column_sep >>
@@ -306,7 +315,8 @@ named!(lex_lines<&[u8], Vec<Token>>,
                 lex_line2 |
                 lex_line3 |
                 lex_line4 |
-                lex_line5
+                lex_line5 |
+                lex_line6
             )
         ) >>
         ({
@@ -663,6 +673,21 @@ mod tests {
         let expected_tokens = vec![
             Token::Directive(String::from("org")),
             Token::NumericLiteral(0x200)
+        ];
+
+        assert_eq!(result, IResult::Done(&b""[..], expected_tokens));
+    }
+
+    #[test]
+    fn test_lex_blank_line() {
+        let input = "label1\t\tLD V0, $FF ; comment 1\n\nend\t\tJP #end ; comment 2\n".as_bytes();
+        let result = lex_lines(input);
+
+        let expected_tokens = vec![
+            Token::Label(String::from("label1")),
+            Token::Instruction(String::from("LD")), Token::Register(String::from("V0")), Token::Comma, Token::NumericLiteral(0xFF),
+            Token::Label(String::from("end")),
+            Token::Instruction(String::from("JP")), Token::LabelOperand(String::from("end"))
         ];
 
         assert_eq!(result, IResult::Done(&b""[..], expected_tokens));
