@@ -1,18 +1,12 @@
-use std::fmt;
 use std::str::{from_utf8, FromStr};
 use std::u32;
 
 use nom::*;
 
 /// Error type if lexer encounters an error in the bit stream
+#[derive(Debug)]
 pub struct LexerError {
     message: String
-}
-
-impl fmt::Debug for LexerError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.message)
-    }
 }
 
 /// Possible tokens that can exist in the Chip8 assembly file
@@ -23,7 +17,44 @@ pub enum Token {
     Instruction(String),
     Register(String),
     NumericLiteral(u32),
+    LabelOperand(String),
     Comma
+}
+
+impl Token {
+    pub fn is_register(&self) -> bool {
+        match *self {
+            Token::Register(_) => true,
+            _ => false
+        }
+    }
+    
+    pub fn is_general_purpose_register(&self) -> bool {
+        match *self {
+            Token::Register(ref reg) =>  {
+                if reg.contains("V") {
+                    true
+                }
+                else {
+                    false
+                }
+            },
+            _ => false
+        }
+    }
+
+    pub fn is_numeric_literal(&self) -> bool {
+        match *self {
+            Token::NumericLiteral(_) => true,
+            _ => false
+        }
+    }
+    pub fn is_label_operand(&self) -> bool {
+        match *self {
+            Token::LabelOperand(_) => true,
+            _ => false
+        }
+    }
 }
 
 /// parse a label
@@ -92,7 +123,8 @@ named!(lex_registers<&[u8], Token>,
             tag!("VF") |
             tag!("DT") |
             tag!("ST") |
-            tag!("F")
+            tag!("F")  |
+            tag!("[I]")
         ), from_utf8), FromStr::from_str) >>
         (Token::Register(reg))
     )
@@ -140,12 +172,21 @@ named!(lex_mnem<&[u8], Token>,
     )
 );
 
+/// Parse a label operand
+named!(lex_label_operand<&[u8], Token>,
+    do_parse!(
+        tag!("#") >>
+        label_operand: map_res!(map_res!(alphanumeric, from_utf8), FromStr::from_str) >>
+        (Token::LabelOperand(label_operand))
+    )
+);
+
 /// Parse an instruction
 named!(lex_instruction<&[u8], Vec<Token>>,
     do_parse!(
         mnem: lex_mnem >>
         opt!(lex_column_sep) >>
-        operand1: opt!(alt_complete!(lex_registers | lex_numeric_literal)) >>
+        operand1: opt!(alt_complete!(lex_registers | lex_numeric_literal | lex_label_operand)) >>
         opt!(lex_column_sep) >>
         comma: opt!(lex_comma) >>
         opt!(lex_column_sep) >>
@@ -204,8 +245,16 @@ named!(lex_line1<&[u8], Vec<Token>>,
 );
 
 /// Parse line combination 2
-/// \t\t org $200
 named!(lex_line2<&[u8], Vec<Token>>,
+    do_parse!(
+        lex_line_termination >>
+        (Vec::new())
+    )
+);
+
+/// Parse line combination 3
+/// \t\t org $200
+named!(lex_line3<&[u8], Vec<Token>>,
     do_parse!(
         lex_column_sep >>
         directive: lex_directives >>
@@ -216,9 +265,9 @@ named!(lex_line2<&[u8], Vec<Token>>,
     )
 );
 
-/// Parse line combination 3
+/// Parse line combination 4
 /// label
-named!(lex_line3<&[u8], Vec<Token>>, 
+named!(lex_line4<&[u8], Vec<Token>>, 
     do_parse!(
         label: lex_label >>
         lex_line_termination >>
@@ -226,9 +275,9 @@ named!(lex_line3<&[u8], Vec<Token>>,
     )
 );
 
-/// Parse line combination 4
+/// Parse line combination 5
 /// LD V0, V1
-named!(lex_line4<&[u8], Vec<Token>>,
+named!(lex_line5<&[u8], Vec<Token>>,
     do_parse!(
         lex_column_sep >>
         instrs: lex_instruction >>
@@ -237,9 +286,9 @@ named!(lex_line4<&[u8], Vec<Token>>,
     )
 );
 
-/// Parse line combination 5
+/// Parse line combination 6
 /// label LD V0, V1
-named!(lex_line5<&[u8], Vec<Token>>,
+named!(lex_line6<&[u8], Vec<Token>>,
     do_parse!(
         label: lex_label >>
         lex_column_sep >>
@@ -266,7 +315,8 @@ named!(lex_lines<&[u8], Vec<Token>>,
                 lex_line2 |
                 lex_line3 |
                 lex_line4 |
-                lex_line5
+                lex_line5 |
+                lex_line6
             )
         ) >>
         ({
@@ -365,6 +415,14 @@ mod tests {
         let result = lex_comma(input);
 
         assert_eq!(result, IResult::Done(&b""[..], Token::Comma));
+    }
+
+    #[test]
+    fn test_label_operand() {
+        let input = "#label".as_bytes();
+        let result = lex_label_operand(input);
+
+        assert_eq!(result, IResult::Done(&b""[..], Token::LabelOperand(String::from("label"))));
     }
 
     #[test]
@@ -496,6 +554,19 @@ mod tests {
     }
 
     #[test]
+    fn test_lex_instruction5() {
+        let input = "JP #label\n".as_bytes();
+        let result = lex_instruction(input);
+
+        let expected_tokens = vec![
+            Token::Instruction(String::from("JP")),
+            Token::LabelOperand(String::from("label"))
+        ];
+
+        assert_eq!(result, IResult::Done(&b"\n"[..], expected_tokens));
+    }
+
+    #[test]
     fn test_lex_line1_lf() {
         let input = "\n".as_bytes();
         let result = lex_line1(input);
@@ -602,6 +673,21 @@ mod tests {
         let expected_tokens = vec![
             Token::Directive(String::from("org")),
             Token::NumericLiteral(0x200)
+        ];
+
+        assert_eq!(result, IResult::Done(&b""[..], expected_tokens));
+    }
+
+    #[test]
+    fn test_lex_blank_line() {
+        let input = "label1\t\tLD V0, $FF ; comment 1\n\nend\t\tJP #end ; comment 2\n".as_bytes();
+        let result = lex_lines(input);
+
+        let expected_tokens = vec![
+            Token::Label(String::from("label1")),
+            Token::Instruction(String::from("LD")), Token::Register(String::from("V0")), Token::Comma, Token::NumericLiteral(0xFF),
+            Token::Label(String::from("end")),
+            Token::Instruction(String::from("JP")), Token::LabelOperand(String::from("end"))
         ];
 
         assert_eq!(result, IResult::Done(&b""[..], expected_tokens));

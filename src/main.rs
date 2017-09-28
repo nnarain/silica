@@ -11,5 +11,10 @@ fn main() {
         }
     );
 
-    silica::assembler::assemble(input_data);
+    match silica::assembler::assemble(input_data) {
+        Ok(data) => {
+            silica::write_to_file(data)
+        },
+        Err(e) => println!("{:?}", e)
+    }
 }
