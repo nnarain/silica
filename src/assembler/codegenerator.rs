@@ -124,6 +124,7 @@ impl CodeGenerator {
                 "SKNP" => self.process_skip_instruction(expr, 0xA1),
                 "RND" => self.process_rnd_instruction(expr),
                 "DRW" => self.process_draw_instruction(expr),
+                "LD" => self.process_load_instruction(expr),
                 _ => {} 
             }
         }
@@ -236,6 +237,59 @@ impl CodeGenerator {
                     let reg2_num = self.register_name_to_u8(reg2);
 
                     self.append_opcode(0xD0 | reg1_num, (reg2_num << 4) | n as u8);
+                }
+            }
+        }
+    }
+
+    fn process_load_instruction(&mut self, expr: &Expression) {
+        if let Token::Register(ref reg1) = expr[1] {
+            if expr[1].is_general_purpose_register() {
+                // operand 1 is a general purpose register
+                let reg1_num = self.register_name_to_u8(reg1);
+
+                if let Token::NumericLiteral(kk) = expr[2] {
+                    self.append_opcode(0x60 | reg1_num, kk as u8);
+                }
+                else if let Token::Register(ref reg2) = expr[2] {
+                    if expr[2].is_general_purpose_register() {
+                        let reg2_num = self.register_name_to_u8(reg2);
+                        self.append_opcode(0x80 | reg1_num, reg2_num << 4);
+                    }
+                    else {
+                        match reg2.as_ref() {
+                            "DT" => self.append_opcode(0xF0 | reg1_num, 0x07),
+                            "K" => self.append_opcode(0xF0 | reg1_num, 0x0A),
+                            "[I]" => self.append_opcode(0xF0 | reg1_num, 0x65),
+                            _ => {
+                                panic!("Invalid operand");
+                            }
+                        }
+                    }
+                }
+            }
+            else {
+                // operand 1 is not a general purpose register
+
+                if let Token::Register(ref reg2) = expr[2] {
+                    let reg2_num = self.register_name_to_u8(reg2);
+
+                    match reg1.as_ref() {
+                        "DT" => self.append_opcode(0xF0 | reg2_num, 0x15),
+                        "ST" => self.append_opcode(0xF0 | reg2_num, 0x18),
+                        "F" => self.append_opcode(0xF0 | reg2_num, 0x29),
+                        "B" => self.append_opcode(0xF0 | reg2_num, 0x33),
+                        "[I]" => self.append_opcode(0xF0 | reg2_num, 0x55),
+                        _ => panic!("Invalid operand for instruction LD")
+                    }
+                }
+                else if let Token::NumericLiteral(nnn) = expr[2] {
+                    match reg1.as_ref() {
+                        "I" => self.append_opcode(0xA0 | (nnn >> 8) as u8, (nnn & 0xFF) as u8),
+                        _ => {
+                            panic!("Invalid operand for instruction LD");
+                        }
+                    }
                 }
             }
         }
@@ -477,5 +531,170 @@ mod tests {
 
         assert_eq!(opcodes[0], 0xD0);
         assert_eq!(opcodes[1], 0x1F);
+    }
+
+    #[test]
+    fn test_ld1() {
+        let expr = vec![
+            Token::Instruction(String::from("LD")),
+            Token::Register(String::from("V0")),
+            Token::Register(String::from("V1"))
+        ];
+
+        let codegen = CodeGenerator::new();
+        let opcodes = codegen.generate(vec![expr]);
+
+        assert_eq!(opcodes[0], 0x80);
+        assert_eq!(opcodes[1], 0x10);
+    }
+
+    #[test]
+    fn test_ld2() {
+        let expr = vec![
+            Token::Instruction(String::from("LD")),
+            Token::Register(String::from("V0")),
+            Token::NumericLiteral(0xFF)
+        ];
+
+        let codegen = CodeGenerator::new();
+        let opcodes = codegen.generate(vec![expr]);
+
+        assert_eq!(opcodes[0], 0x60);
+        assert_eq!(opcodes[1], 0xFF);
+    }
+
+    #[test]
+    fn test_ld3() {
+        let expr = vec![
+            Token::Instruction(String::from("LD")),
+            Token::Register(String::from("I")),
+            Token::NumericLiteral(0xFFF)
+        ];
+
+        let codegen = CodeGenerator::new();
+        let opcodes = codegen.generate(vec![expr]);
+
+        assert_eq!(opcodes[0], 0xAF);
+        assert_eq!(opcodes[1], 0xFF);
+    }
+
+    #[test]
+    fn test_ld4() {
+        let expr = vec![
+            Token::Instruction(String::from("LD")),
+            Token::Register(String::from("V0")),
+            Token::Register(String::from("DT"))
+        ];
+
+        let codegen = CodeGenerator::new();
+        let opcodes = codegen.generate(vec![expr]);
+
+        assert_eq!(opcodes[0], 0xF0);
+        assert_eq!(opcodes[1], 0x07);
+    }
+
+    #[test]
+    fn test_ld5() {
+        let expr = vec![
+            Token::Instruction(String::from("LD")),
+            Token::Register(String::from("V0")),
+            Token::Register(String::from("K"))
+        ];
+
+        let codegen = CodeGenerator::new();
+        let opcodes = codegen.generate(vec![expr]);
+
+        assert_eq!(opcodes[0], 0xF0);
+        assert_eq!(opcodes[1], 0x0A);
+    }
+
+    #[test]
+    fn test_ld6() {
+        let expr = vec![
+            Token::Instruction(String::from("LD")),
+            Token::Register(String::from("DT")),
+            Token::Register(String::from("V0"))
+        ];
+
+        let codegen = CodeGenerator::new();
+        let opcodes = codegen.generate(vec![expr]);
+
+        assert_eq!(opcodes[0], 0xF0);
+        assert_eq!(opcodes[1], 0x15);
+    }
+
+    #[test]
+    fn test_ld7() {
+        let expr = vec![
+            Token::Instruction(String::from("LD")),
+            Token::Register(String::from("ST")),
+            Token::Register(String::from("V0"))
+        ];
+
+        let codegen = CodeGenerator::new();
+        let opcodes = codegen.generate(vec![expr]);
+
+        assert_eq!(opcodes[0], 0xF0);
+        assert_eq!(opcodes[1], 0x18);
+    }
+
+    #[test]
+    fn test_ld8() {
+        let expr = vec![
+            Token::Instruction(String::from("LD")),
+            Token::Register(String::from("F")),
+            Token::Register(String::from("V0"))
+        ];
+
+        let codegen = CodeGenerator::new();
+        let opcodes = codegen.generate(vec![expr]);
+
+        assert_eq!(opcodes[0], 0xF0);
+        assert_eq!(opcodes[1], 0x29);
+    }
+
+    #[test]
+    fn test_ld9() {
+        let expr = vec![
+            Token::Instruction(String::from("LD")),
+            Token::Register(String::from("B")),
+            Token::Register(String::from("V0"))
+        ];
+
+        let codegen = CodeGenerator::new();
+        let opcodes = codegen.generate(vec![expr]);
+
+        assert_eq!(opcodes[0], 0xF0);
+        assert_eq!(opcodes[1], 0x33);
+    }
+
+    #[test]
+    fn test_ld10() {
+        let expr = vec![
+            Token::Instruction(String::from("LD")),
+            Token::Register(String::from("[I]")),
+            Token::Register(String::from("V0"))
+        ];
+
+        let codegen = CodeGenerator::new();
+        let opcodes = codegen.generate(vec![expr]);
+
+        assert_eq!(opcodes[0], 0xF0);
+        assert_eq!(opcodes[1], 0x55);
+    }
+
+    #[test]
+    fn test_ld11() {
+        let expr = vec![
+            Token::Instruction(String::from("LD")),
+            Token::Register(String::from("V0")),
+            Token::Register(String::from("[I]"))
+        ];
+
+        let codegen = CodeGenerator::new();
+        let opcodes = codegen.generate(vec![expr]);
+
+        assert_eq!(opcodes[0], 0xF0);
+        assert_eq!(opcodes[1], 0x65);
     }
 }
