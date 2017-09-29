@@ -25,7 +25,8 @@ pub struct CodeGenerator {
     address_counter: u32,
     labels: HashMap<String, u32>,
     opcodes: Vec<u8>,
-    incomplete_queue: Vec<IncompleteInstruction>
+    incomplete_queue: Vec<IncompleteInstruction>,
+    largest_address: u32
 }
 
 
@@ -35,7 +36,8 @@ impl CodeGenerator {
             address_counter: 0,
             labels: HashMap::new(),
             opcodes: vec![0; 4096],
-            incomplete_queue: vec![]
+            incomplete_queue: vec![],
+            largest_address: 0
         }
     }
 
@@ -53,7 +55,14 @@ impl CodeGenerator {
             self.process_expression(&item.expr);
         }
 
-        self.opcodes
+        let reduced_mem = self.reduce_memory_size();
+        let mut output = vec![0; reduced_mem.len() - 0x200];
+
+        for i in 0..output.len() {
+            output[i] = reduced_mem[i + 0x200];
+        }
+
+        output
     }
 
     /// Process a new expression
@@ -90,7 +99,7 @@ impl CodeGenerator {
                     for i in 1..expr.len() {
                         if let Token::NumericLiteral(n) = expr[i] {
                             self.opcodes[self.address_counter as usize] = n as u8;
-                            self.address_counter += 1;
+                            self.increment_address_counter(1);
                         }
                     }
                 }
@@ -321,10 +330,21 @@ impl CodeGenerator {
         }
     }
 
+    fn reduce_memory_size(&mut self) -> Vec<u8> {
+        self.opcodes.drain(..self.largest_address as usize).collect()
+    }
+
     fn append_opcode(&mut self, msb: u8, lsb: u8) {
         self.opcodes[self.address_counter as usize] = msb;
         self.opcodes[(self.address_counter + 1) as usize] = lsb;
-        self.address_counter += 2;
+        self.increment_address_counter(2);
+    }
+
+    fn increment_address_counter(&mut self, i: u32) {
+        self.address_counter += i;
+        if self.address_counter > self.largest_address {
+            self.largest_address = self.address_counter;
+        }
     }
 
     fn register_name_to_u8(&mut self, name: &String) -> u8 {
