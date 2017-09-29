@@ -298,6 +298,24 @@ impl CodeGenerator {
                             panic!("Invalid operand for instruction LD");
                         }
                     }
+                } else if let Token::LabelOperand(ref label) = expr[2] {
+                    match reg1.as_ref() {
+                        "I" => {
+                            // see if the address has been stored
+                            if self.labels.contains_key(label) {
+                                let address = self.labels[label];
+                                self.append_opcode(0xA0 | (address >> 8) as u8, (address & 0xFF) as u8); 
+                            }
+                            else {
+                                // if the address has not been encountered, queue as incomplete
+                                let incomplete = IncompleteInstruction::new(self.address_counter, expr.clone());
+                                self.incomplete_queue.push(incomplete);
+                            }
+                        },
+                        _ => {
+                            panic!("Invalid operand for instruction LD");
+                        }
+                    }
                 }
             }
         }
@@ -723,5 +741,23 @@ mod tests {
 
         assert_eq!(opcodes[0], 0xF0);
         assert_eq!(opcodes[1], 0x65);
+    }
+
+    #[test]
+    fn test_ld_i_addr() {
+        let expr = vec![
+            Token::Instruction(String::from("LD")),
+            Token::Register(String::from("I")), 
+            Token::LabelOperand(String::from("label"))
+        ];
+
+        let codegen = CodeGenerator::new();
+        let opcodes = codegen.generate(vec![
+            vec![Token::Label(String::from("label"))],
+            expr
+        ]);
+
+        assert_eq!(opcodes[0], 0xA0);
+        assert_eq!(opcodes[1], 0x00);
     }
 }
