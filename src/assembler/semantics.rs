@@ -140,7 +140,8 @@ fn check_instruction_semantics(instr: &String, expr: &Expression) -> Result<(), 
         "LD" => {
             if expr.len() == 3 {
                 if (expr[1].is_register() && expr[2].is_numeric_literal()) ||
-                    (expr[1].is_register() && expr[2].is_register()) {
+                    (expr[1].is_register() && expr[2].is_register()) ||
+                    (expr[1].is_register() && expr[2].is_label_operand()) {
                     Ok(())
                 }
                 else {
