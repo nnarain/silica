@@ -170,8 +170,7 @@ impl CodeGenerator {
             }
             else {
                 // if the address has not been encountered, queue as incomplete
-                let incomplete = IncompleteInstruction::new(self.address_counter, expr.clone());
-                self.incomplete_queue.push(incomplete);
+                self.queue_incomplete_instruction(expr);
             }
         }
     }
@@ -271,6 +270,7 @@ impl CodeGenerator {
                 let reg1_num = self.register_name_to_u8(reg1);
 
                 if let Token::NumericLiteral(kk) = expr[2] {
+                   // println!("{:X} {:X}", 0x60 | reg1_num, kk as u8);
                     self.append_opcode(0x60 | reg1_num, kk as u8);
                 }
                 else if let Token::Register(ref reg2) = expr[2] {
@@ -322,8 +322,7 @@ impl CodeGenerator {
                             }
                             else {
                                 // if the address has not been encountered, queue as incomplete
-                                let incomplete = IncompleteInstruction::new(self.address_counter, expr.clone());
-                                self.incomplete_queue.push(incomplete);
+                                self.queue_incomplete_instruction(expr);
                             }
                         },
                         _ => {
@@ -335,11 +334,18 @@ impl CodeGenerator {
         }
     }
 
+    fn queue_incomplete_instruction(&mut self, expr: &Expression) {
+        let incomplete = IncompleteInstruction::new(self.address_counter, expr.clone());
+        self.incomplete_queue.push(incomplete);
+        self.increment_address_counter(2);
+    }
+
     fn reduce_memory_size(&mut self) -> Vec<u8> {
         self.opcodes.drain(..self.largest_address as usize).collect()
     }
 
     fn append_opcode(&mut self, msb: u8, lsb: u8) {
+        println!("[{:X}] = {:X} {:X}", self.address_counter, msb, lsb);
         self.opcodes[self.address_counter as usize] = msb;
         self.opcodes[(self.address_counter + 1) as usize] = lsb;
         self.increment_address_counter(2);
