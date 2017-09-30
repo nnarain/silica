@@ -3,3 +3,4 @@ target/
 
 asm/*
 *.c8
+*.dll
