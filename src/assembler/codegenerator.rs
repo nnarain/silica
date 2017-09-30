@@ -345,7 +345,6 @@ impl CodeGenerator {
     }
 
     fn append_opcode(&mut self, msb: u8, lsb: u8) {
-        println!("[{:X}] = {:X} {:X}", self.address_counter, msb, lsb);
         self.opcodes[self.address_counter as usize] = msb;
         self.opcodes[(self.address_counter + 1) as usize] = lsb;
         self.increment_address_counter(2);
