@@ -87,8 +87,11 @@ named!(parse_instructions<&[Token], Expression>,
         opt_complete!(tag_token!(Token::Comma)) >>
         operand2: opt_complete!(alt_complete!(
             tag_token!(Token::Register(_)) |
-            tag_token!(Token::NumericLiteral(_))
+            tag_token!(Token::NumericLiteral(_)) |
+            tag_token!(Token::LabelOperand(_))
         )) >>
+        opt_complete!(tag_token!(Token::Comma)) >>
+        operand3: opt_complete!(tag_token!(Token::NumericLiteral(_))) >>
         ({
             let mut ret = vec![instr];
             if let Some(operand1) = operand1 {
@@ -96,6 +99,9 @@ named!(parse_instructions<&[Token], Expression>,
             }
             if let Some(operand2) = operand2 {
                 ret.push(operand2);
+            }
+            if let Some(operand3) = operand3 {
+                ret.push(operand3);
             }
 
             ret

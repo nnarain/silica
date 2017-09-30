@@ -121,6 +121,7 @@ named!(lex_registers<&[u8], Token>,
             tag!("VD") |
             tag!("VE") |
             tag!("VF") |
+            tag!("I")  |
             tag!("DT") |
             tag!("ST") |
             tag!("F")  |
@@ -190,7 +191,7 @@ named!(lex_instruction<&[u8], Vec<Token>>,
         opt!(lex_column_sep) >>
         comma: opt!(lex_comma) >>
         opt!(lex_column_sep) >>
-        operand2: opt!(alt_complete!(lex_registers | lex_numeric_literal)) >>
+        operand2: opt!(alt_complete!(lex_registers | lex_numeric_literal | lex_label_operand)) >>
         opt!(lex_column_sep) >>
         comma2: opt!(lex_comma) >>
         opt!(lex_column_sep) >>
@@ -744,6 +745,38 @@ mod tests {
 
         let expected_tokens = vec![
             Token::Directive(String::from("org")),
+            Token::NumericLiteral(0x200)
+        ];
+
+        assert_eq!(result, IResult::Done(&b""[..], expected_tokens));
+    }
+
+    #[test]
+    fn test_lex_lines4() {
+        let input = "\t\t org $200\n\t\tLD V0, $FF\n".as_bytes();
+        let result = lex_lines(input);
+
+        let expected_tokens = vec![
+            Token::Directive(String::from("org")),
+            Token::NumericLiteral(0x200),
+            Token::Instruction(String::from("LD")),
+            Token::Register(String::from("V0")),
+            Token::Comma,
+            Token::NumericLiteral(0xFF)
+        ];
+
+        assert_eq!(result, IResult::Done(&b""[..], expected_tokens));
+    }
+
+    #[test]
+    fn test_lex_lines5() {
+        let input = "\t\t LD I, $200\n".as_bytes();
+        let result = lex_lines(input);
+
+        let expected_tokens = vec![
+            Token::Instruction(String::from("LD")),
+            Token::Register(String::from("I")),
+            Token::Comma,
             Token::NumericLiteral(0x200)
         ];
 
