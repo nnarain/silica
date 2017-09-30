@@ -56,13 +56,18 @@ impl CodeGenerator {
         }
 
         let reduced_mem = self.reduce_memory_size();
-        let mut output = vec![0; reduced_mem.len() - 0x200];
 
-        for i in 0..output.len() {
-            output[i] = reduced_mem[i + 0x200];
+        if reduced_mem.len() < 0x200 {
+            return reduced_mem
         }
+        else {
+            let mut output = vec![0; reduced_mem.len() - 0x200];
 
-        output
+            for i in 0..output.len() {
+                output[i] = reduced_mem[i + 0x200];
+            }
+            return output
+        }
     }
 
     /// Process a new expression
