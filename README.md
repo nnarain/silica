@@ -22,7 +22,7 @@ cargo build
 Example
 -------
 
-Here is a simple example program written in Chip8 assembly. This program will print the numbers 0, 1, 2
+Here is a simple example program written in Chip8 assembly. This program will print the numbers 0, 1, 2, 3
 
 ```asm
 
