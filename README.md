@@ -46,6 +46,12 @@ start       LD I, #num0
             
             DRW V0, V1, 5
 
+            LD I, #num3
+            LD V0, 30
+            LD V1, 0
+            
+            DRW V0, V1, 5
+
 end         JP #end          ; loop forever
 
 ; Sprites
